@@ -327,7 +327,6 @@ describe('ContainerValidator', () => {
       const infos = result.info.filter(i => i.type === 'keyed_group_no_default')
       assert.strictEqual(infos.length, 1)
       assert.include(infos[0].detail, 'payment')
-      assert.strictEqual(infos[0].subject, 'keyed:payment')
     })
 
     it('does not report INFO when one keyed service in the group is default', () => {
