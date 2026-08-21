@@ -81,7 +81,7 @@ describe('ContainerValidator', () => {
     })
   })
 
-  // ─── Check 2: Circular dependencies ───────────────────────────────────────
+  // ─── Check 2: Circular dependencies ────────────────────────────────────────
 
   describe('circular_dependency', () => {
     it('reports ERROR for a direct A → B → A cycle', () => {
@@ -315,35 +315,26 @@ describe('ContainerValidator', () => {
   // ─── Check 7: Keyed group with no default ─────────────────────────────────
 
   describe('keyed_group_no_default', () => {
-    it('reports INFO when multiple services share a tag with no default', () => {
+    it('reports INFO when multiple keyed services share a group with no default', () => {
       const container = new ContainerBuilder()
 
-      const paypal = new Definition()
-      paypal.addTag('payment.gateway')
-      container.setDefinition('payment.paypal', paypal)
-
-      const stripe = new Definition()
-      stripe.addTag('payment.gateway')
-      container.setDefinition('payment.stripe', stripe)
+      container.registerKeyed('payment', 'paypal', Definition)
+      container.registerKeyed('payment', 'stripe', Definition)
 
       const validator = new ContainerValidator(container)
       const result = validator.validate()
 
       const infos = result.info.filter(i => i.type === 'keyed_group_no_default')
       assert.strictEqual(infos.length, 1)
-      assert.include(infos[0].detail, 'payment.gateway')
+      assert.include(infos[0].detail, 'payment')
+      assert.strictEqual(infos[0].subject, 'keyed:payment')
     })
 
-    it('does not report INFO when one service in the group has default: true', () => {
+    it('does not report INFO when one keyed service in the group is default', () => {
       const container = new ContainerBuilder()
 
-      const paypal = new Definition()
-      paypal.addTag('payment.gateway', new Map([['default', true]]))
-      container.setDefinition('payment.paypal', paypal)
-
-      const stripe = new Definition()
-      stripe.addTag('payment.gateway')
-      container.setDefinition('payment.stripe', stripe)
+      container.registerKeyed('payment', 'paypal', Definition).setDefault(true)
+      container.registerKeyed('payment', 'stripe', Definition)
 
       const validator = new ContainerValidator(container)
       const result = validator.validate()
@@ -352,12 +343,28 @@ describe('ContainerValidator', () => {
       assert.strictEqual(infos.length, 0)
     })
 
-    it('does not report INFO when only one service has the tag', () => {
+    it('does not report INFO when only one keyed service is in the group', () => {
+      const container = new ContainerBuilder()
+
+      container.registerKeyed('payment', 'paypal', Definition)
+
+      const validator = new ContainerValidator(container)
+      const result = validator.validate()
+
+      const infos = result.info.filter(i => i.type === 'keyed_group_no_default')
+      assert.strictEqual(infos.length, 0)
+    })
+
+    it('does not treat ordinary tags as keyed groups', () => {
       const container = new ContainerBuilder()
 
       const paypal = new Definition()
       paypal.addTag('payment.gateway')
       container.setDefinition('payment.paypal', paypal)
+
+      const stripe = new Definition()
+      stripe.addTag('payment.gateway')
+      container.setDefinition('payment.stripe', stripe)
 
       const validator = new ContainerValidator(container)
       const result = validator.validate()
